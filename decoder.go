@@ -35,6 +35,9 @@ func (d *Decoder) Decode(urll string) (string, error) {
 	if strings.Contains(urll, "drive.google.com") {
 		return d.gdrive(urll)
 	}
+	if strings.Contains(urll, "mixdrop") {
+		return d.mixdrop(urll)
+	}
 	return "", fmt.Errorf("host is not supported, yet...")
 }
 
@@ -64,6 +67,20 @@ func (d *Decoder) gdrive(url string) (string, error) {
 		return "", ErrNotStatusOK
 	}
 	return content, nil
+}
+
+func (d *Decoder) mixdrop(url string) (string, error) {
+	content, _, _ := httpRequest(url, http.MethodGet)
+	u := NewUnpacker()
+	res, err := u.Unpack(content)
+	if err != nil {
+		return "", err
+	}
+	mixdropRegx := `wurl=\"([^\"]+)`
+	re := regexp.MustCompile(mixdropRegx)
+	res = re.FindString(res)
+	res = strings.TrimPrefix(res, `wurl="`)
+	return "https:" + res, nil
 }
 
 func httpRequest(url, method string) (string, int, error) {

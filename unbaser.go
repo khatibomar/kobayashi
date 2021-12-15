@@ -10,7 +10,7 @@ type Unbaser struct {
 	base     int
 	dict     map[string]int
 	selector int
-	alphabet []string
+	alphabet map[int]string
 }
 
 func NewUnbaser(radix int) *Unbaser {
@@ -24,7 +24,7 @@ func NewUnbaser(radix int) *Unbaser {
 	} else {
 		selector = 52
 	}
-	var alphabet []string
+	alphabet := make(map[int]string)
 	alphabet[52] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"
 	alphabet[54] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQR"
 	alphabet[62] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -43,11 +43,11 @@ func NewUnbaser(radix int) *Unbaser {
 
 func (u *Unbaser) Unbase(val string) (int, error) {
 	if 2 <= u.base && u.base <= 36 {
-		v, err := strconv.Atoi(val)
+		v, err := strconv.ParseInt(val, u.base, 64)
 		if err != nil {
-			return -1, nil
+			return -1, err
 		}
-		return v, nil
+		return int(v), nil
 	} else {
 		ret := 0
 		valArray := arrayReverse(strings.Split(val, ""))
