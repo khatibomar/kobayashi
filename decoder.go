@@ -2,6 +2,7 @@ package kobayashi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,11 +33,14 @@ func (d *Decoder) Decode(urll string) (string, error) {
 	if strings.Contains(urll, "mediafire") {
 		return d.mediafire(urll)
 	}
-	if strings.Contains(urll, "drive.google.com") {
+	if strings.Contains(urll, "drive.google") {
 		return d.gdrive(urll)
 	}
 	if strings.Contains(urll, "mixdrop") {
 		return d.mixdrop(urll)
+	}
+	if strings.Contains(urll, "fembed") {
+		return d.fembed(urll)
 	}
 	return "", fmt.Errorf("host is not supported, yet...")
 }
@@ -70,7 +74,13 @@ func (d *Decoder) gdrive(url string) (string, error) {
 }
 
 func (d *Decoder) mixdrop(url string) (string, error) {
-	content, _, _ := httpRequest(url, http.MethodGet)
+	content, status, err := httpRequest(url, http.MethodGet)
+	if err != nil {
+		return "", nil
+	}
+	if status != http.StatusOK {
+		return "", ErrNotStatusOK
+	}
 	u := NewUnpacker()
 	res, err := u.Unpack(content)
 	if err != nil {
@@ -81,6 +91,30 @@ func (d *Decoder) mixdrop(url string) (string, error) {
 	res = re.FindString(res)
 	res = strings.TrimPrefix(res, `wurl="`)
 	return "https:" + res, nil
+}
+
+func (d *Decoder) fembed(url string) (string, error) {
+	type fembed struct {
+		Data []struct {
+			File string `json:"file"`
+		} `json:"data"`
+	}
+	content, status, err := httpRequest(url, http.MethodPost)
+	if err != nil {
+		return "", nil
+	}
+	if status != http.StatusOK {
+		return "", ErrNotStatusOK
+	}
+	var fd fembed
+	err = json.Unmarshal([]byte(content), &fd)
+	if err != nil {
+		return "", nil
+	}
+	if len(fd.Data) == 0 {
+		return "", fmt.Errorf("No direct Link Available")
+	}
+	return fd.Data[len(fd.Data)-1].File, nil
 }
 
 func httpRequest(url, method string) (string, int, error) {
