@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -32,16 +34,16 @@ func NewDecoder() decoder {
 func (d *Decoder) Decode(urll string) (string, error) {
 	if strings.Contains(urll, "mediafire") {
 		return d.mediafire(urll)
-	}
-	if strings.Contains(urll, "drive.google") {
+	} else if strings.Contains(urll, "drive.google") {
 		return d.gdrive(urll)
-	}
-	if strings.Contains(urll, "mixdrop") {
+	} else if strings.Contains(urll, "mixdrop") {
 		return d.mixdrop(urll)
-	}
-	if strings.Contains(urll, "fembed") {
+	} else if strings.Contains(urll, "fembed") {
 		return d.fembed(urll)
+	} else if strings.Contains(urll, "ok.ru") {
+		return d.okru(urll)
 	}
+
 	return "", fmt.Errorf("host is not supported, yet...")
 }
 
@@ -50,7 +52,7 @@ func (d *Decoder) mediafire(url string) (string, error) {
 	re := regexp.MustCompile(mediafireReg)
 	content, status, err := httpRequest(url, http.MethodGet)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	if status != http.StatusOK {
 		return "", ErrNotStatusOK
@@ -65,7 +67,7 @@ func (d *Decoder) gdrive(url string) (string, error) {
 	u := fmt.Sprintf(GdriveGetDirectLinkPath, hash)
 	content, status, err := httpRequest(u, http.MethodGet)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	if status != http.StatusOK {
 		return "", ErrNotStatusOK
@@ -76,7 +78,7 @@ func (d *Decoder) gdrive(url string) (string, error) {
 func (d *Decoder) mixdrop(url string) (string, error) {
 	content, status, err := httpRequest(url, http.MethodGet)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	if status != http.StatusOK {
 		return "", ErrNotStatusOK
@@ -101,7 +103,7 @@ func (d *Decoder) fembed(url string) (string, error) {
 	}
 	content, status, err := httpRequest(url, http.MethodPost)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	if status != http.StatusOK {
 		return "", ErrNotStatusOK
@@ -115,6 +117,57 @@ func (d *Decoder) fembed(url string) (string, error) {
 		return "", fmt.Errorf("No direct Link Available")
 	}
 	return fd.Data[len(fd.Data)-1].File, nil
+}
+
+func (d *Decoder) okru(urll string) (string, error) {
+	u, err := url.Parse(urll)
+	if err != nil {
+		return "", err
+	}
+	u.Host = strings.TrimPrefix(u.Hostname(), "m.")
+	u.Path = strings.Replace(u.Path, "video", "videoembed", 1)
+	urll = u.String()
+	type okru struct {
+		Flashvars struct {
+			Metadata string `json:"metadata"`
+		} `json:"flashvars"`
+	}
+
+	type okruMeta struct {
+		Videos []struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"videos"`
+	}
+
+	content, status, err := httpRequest(urll, http.MethodPost)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusOK {
+		return "", ErrNotStatusOK
+	}
+	regEx := "data-options=\"(.*?)\""
+	re := regexp.MustCompile(regEx)
+	res := re.FindString(content)
+	res = strings.TrimSuffix(strings.TrimPrefix(res, `data-options="`), `"`)
+	res = html.UnescapeString(res)
+
+	var okr okru
+	var okrm okruMeta
+
+	err = json.Unmarshal([]byte(res), &okr)
+	if err != nil {
+		return "", err
+	}
+	metadata := okr.Flashvars.Metadata
+	metadata = strings.TrimSuffix(strings.TrimSuffix(metadata, "{{"), "}}")
+	err = json.Unmarshal([]byte(metadata), &okrm)
+	if err != nil {
+		return "", err
+	}
+	hightestURL := okrm.Videos[len(okrm.Videos)-1].URL
+	return hightestURL, nil
 }
 
 func httpRequest(url, method string) (string, int, error) {
