@@ -1,3 +1,3 @@
-module github.com/khatibomar/kobayashi
+module codeberg.org/omarkhatib/kobayashi
 
 go 1.17
