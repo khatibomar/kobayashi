@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/khatibomar/kobayashi"
+	"codeberg.org/khatibomar/kobayashi"
 )
 
 func main () {
