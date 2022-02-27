@@ -28,6 +28,7 @@ func (u *Unpacker) Detect(body string) bool {
 	re := regexp.MustCompile(`eval\(function\(p,a,c,k,e,[r|d]?`)
 	return re.Match([]byte(body))
 }
+
 func (u *Unpacker) Unpack(body string) (string, error) {
 	var err error
 	re := regexp.MustCompile(`}\('(.*)', *(\d+), *(\d+), *'(.*?)'\.split\('\|'\)`)

@@ -48,15 +48,15 @@ func (u *Unbaser) Unbase(val string) (int, error) {
 			return -1, err
 		}
 		return int(v), nil
-	} else {
-		ret := 0
-		valArray := arrayReverse(strings.Split(val, ""))
-
-		for i, cipher := range valArray {
-			ret += int(math.Pow(float64(u.base), float64(i))) * u.dict[cipher]
-		}
-		return ret, nil
 	}
+	ret := 0
+	valArray := arrayReverse(strings.Split(val, ""))
+
+	for i, cipher := range valArray {
+		ret += int(math.Pow(float64(u.base), float64(i))) * u.dict[cipher]
+	}
+	return ret, nil
+
 }
 
 func arrayReverse(s []string) []string {

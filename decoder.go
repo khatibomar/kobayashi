@@ -44,11 +44,11 @@ func (d *Decoder) Decode(urll string) (string, error) {
 		return d.okru(urll)
 	}
 
-	return "", fmt.Errorf("host is not supported, yet...")
+	return "", fmt.Errorf("host is not supported, yet")
 }
 
 func (d *Decoder) mediafire(url string) (string, error) {
-	mediafireReg := `https:\/\/download\d+.mediafire.com\/\w+\/\w+\/.*\.mp4`
+	mediafireReg := `https?:\/\/download\d+.mediafire.com\/\w+\/\w+\/.*\.mp4`
 	re := regexp.MustCompile(mediafireReg)
 	content, status, err := httpRequest(url, http.MethodGet)
 	if err != nil {
@@ -57,7 +57,11 @@ func (d *Decoder) mediafire(url string) (string, error) {
 	if status != http.StatusOK {
 		return "", ErrNotStatusOK
 	}
-	return re.FindString(content), nil
+	s := re.FindString(content)
+	if s == "" {
+		return "", fmt.Errorf("failed to get direct link")
+	}
+	return s, nil
 }
 
 func (d *Decoder) gdrive(url string) (string, error) {
@@ -111,7 +115,7 @@ func (d *Decoder) fembed(url string) (string, error) {
 	var fd fembed
 	err = json.Unmarshal([]byte(content), &fd)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	if len(fd.Data) == 0 {
 		return "", fmt.Errorf("No direct Link Available")
@@ -184,7 +188,7 @@ func httpRequest(url, method string) (string, int, error) {
 	}
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", -1, nil
+		return "", -1, err
 	}
 	defer resp.Body.Close()
 	return string(b), resp.StatusCode, nil
