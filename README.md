@@ -1,5 +1,6 @@
 # kobayashi
 <img src=".github/assets/logo.gif" style="width:250px;height:250px;"/>
+
 kobayashi is Go library to get streaming sites direct links easy as doing : <br> <br>
 
 ```go
@@ -9,7 +10,7 @@ import (
 	"fmt"
 	"log"
 
-	"codeberg.org/khatibomar/kobayashi"
+	"codeberg.org/omarkhatib/kobayashi"
 )
 
 func main () {
